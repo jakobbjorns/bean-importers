@@ -44,8 +44,8 @@ def download_positions(avanza: Avanza_jabs, output_dir):
         testfil.write(s)
 
 
-def download_transactions(avanza: Avanza_jabs, output_dir):
-    b = avanza.get_transactions_details()
+def download_transactions(avanza: Avanza_jabs, output_dir, transactions_from=None):
+    b = avanza.get_transactions_details(transactions_from=transactions_from)
     trx_file = os.path.join(output_dir, "ava_transactions.json")
     with open(trx_file, "w") as testfil:
         json.dump(b, testfil)
