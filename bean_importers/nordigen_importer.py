@@ -48,7 +48,7 @@ class NordigenJSONImporter(beangulp.Importer):
         logging.debug("file_account %s", file)
         return self.account(file)
 
-    def deduplicate(self, entries: data.List[data.NamedTuple], existing: data.List[data.NamedTuple]) -> None:
+    def deduplicate(self, entries: data.Entries, existing: data.Entries) -> None:
 
         existing_id_dict = self.generate_id_dict(existing)
 
