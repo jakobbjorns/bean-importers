@@ -74,7 +74,7 @@ def main(output_dir):
             # input()
             time.sleep(5)
             driver.get(
-                f"https://global.americanexpress.com/api/servicing/v1/financials/documents?file_format=excel&limit=10&status=posted&additional_fields=true&itemized_transactions=true&account_key={os.getenv("amex_account_key")}&client_id=AmexAPI"
+                f"https://global.americanexpress.com/api/servicing/v1/financials/documents?file_format=excel&limit=100&status=posted&additional_fields=true&itemized_transactions=true&account_key={os.getenv("amex_account_key")}&client_id=AmexAPI"
             )
             time.sleep(5)
 
