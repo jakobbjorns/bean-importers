@@ -79,7 +79,7 @@ def main(output_dir):
             time.sleep(5)
 
             diff = set(os.listdir(downloads_path)) - set(download_dir_files)
-            print("Nedladdade filer:", diff)
+            # print("Nedladdade filer:", diff)
             os.rename(
                 os.path.join(downloads_path, diff.pop()),
                 os.path.join(output_dir, "amex_transactions.xlsx"),
