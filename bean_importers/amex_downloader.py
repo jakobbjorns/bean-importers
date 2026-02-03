@@ -1,3 +1,4 @@
+import shutil
 import undetected_chromedriver as uc
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
@@ -80,7 +81,7 @@ def main(output_dir):
 
             diff = set(os.listdir(downloads_path)) - set(download_dir_files)
             # print("Nedladdade filer:", diff)
-            os.rename(
+            shutil.move(
                 os.path.join(downloads_path, diff.pop()),
                 os.path.join(output_dir, "amex_transactions.xlsx"),
             )
