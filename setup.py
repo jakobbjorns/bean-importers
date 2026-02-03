@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 setup(name="bean_importers",
-      version=0.9,
+      version=0.10,
       packages=find_packages(),
       install_requires=[
           "avanza-api>=15.0.0",
