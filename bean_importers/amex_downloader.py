@@ -37,9 +37,9 @@ def main(output_dir):
         prefs = {"download.default_directory": "import_files"}
         options.add_experimental_option("prefs", prefs)
 
-        driver = uc.Chrome(options=options, version_main=144)
-
         load_dotenv()
+        driver = uc.Chrome(options=options, version_main=os.getenv("amex_chrome_version"))
+
         try:
             # Gå till Amex inloggningssida
             driver.get("https://www.americanexpress.com/sv-se/")
