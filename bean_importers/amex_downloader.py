@@ -38,7 +38,7 @@ def main(output_dir):
         options.add_experimental_option("prefs", prefs)
 
         load_dotenv()
-        driver = uc.Chrome(options=options, version_main=os.getenv("amex_chrome_version"))
+        driver = uc.Chrome(options=options, version_main=int(os.getenv("amex_chrome_version")))
 
         try:
             # Gå till Amex inloggningssida
