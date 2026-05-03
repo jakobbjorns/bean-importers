@@ -8,9 +8,9 @@ import beangulp
 import json
 
 logger = logging.getLogger(__name__)
-logging.basicConfig(filename='nordigen_importer.log',
-                    encoding='utf-8', 
-                    level=logging.DEBUG)
+logging.basicConfig(
+    filename="nordigen_importer.log", encoding="utf-8", level=logging.DEBUG
+)
 
 
 class Modes(Flag):
@@ -24,9 +24,15 @@ class Modes(Flag):
 class NordigenJSONImporter(beangulp.Importer):
     """An importer for json files downladed by nordigen_downloader.py"""
 
-    def __init__(self, iban_dict: dict, mode: Modes = Modes.BOOKED | Modes.BOOKED_BALANCE):
+    def __init__(
+        self,
+        iban_dict: dict,
+        mode: Modes = Modes.BOOKED | Modes.BOOKED_BALANCE,
+        static_predictions_dict: dict = {},
+    ):
         self.iban_dict = iban_dict
         self.mode = mode
+        self.static_predictions_dict = static_predictions_dict
 
     def identify(self, file: str):
         if not file.endswith(".json"):
@@ -34,13 +40,18 @@ class NordigenJSONImporter(beangulp.Importer):
 
         with open(file, "r") as f:
             js = json.load(f)
-        return "metadata" in js and "details" in js and "balances" in js and "transactions" in js
+        return (
+            "metadata" in js
+            and "details" in js
+            and "balances" in js
+            and "transactions" in js
+        )
 
     def account(self, file):
         with open(file, "r") as f:
             js = json.load(f)
 
-        iban = js['metadata']['iban']
+        iban = js["metadata"]["iban"]
         asset_account = self.iban_dict[iban]
         return asset_account
 
@@ -68,15 +79,16 @@ class NordigenJSONImporter(beangulp.Importer):
         d = {}
         existing_transactions = data.filter_txns(existing_entries)
         for trx in existing_transactions:
-            if ("internalTransactionId" in trx.meta):
+            if "internalTransactionId" in trx.meta:
                 d[trx.meta["internalTransactionId"]] = trx
-            if ("transactionId" in trx.meta):
+            if "transactionId" in trx.meta:
                 d[trx.meta["transactionId"]] = trx
         return d
 
     def _extract_booked_transactions(self, filepath, assetAccount, js):
         transactions = sorted(
-            js["transactions"]["transactions"]["booked"], key=lambda trx: trx["bookingDate"]
+            js["transactions"]["transactions"]["booked"],
+            key=lambda trx: trx["bookingDate"],
         )
         entries = []
         for index, trx in enumerate(transactions):
@@ -99,12 +111,40 @@ class NordigenJSONImporter(beangulp.Importer):
 
             if "remittanceInformationUnstructured" in trx:
                 narration += trx["remittanceInformationUnstructured"]
-                metakv["remittanceInformationUnstructured"] = trx["remittanceInformationUnstructured"]
+                metakv["remittanceInformationUnstructured"] = trx[
+                    "remittanceInformationUnstructured"
+                ]
             if "creditorName" in trx:
                 narration = trx["creditorName"].strip()
             if "remittanceInformationUnstructuredArray" in trx:
-                narration += " ".join(
-                    trx["remittanceInformationUnstructuredArray"])
+                narration += " ".join(trx["remittanceInformationUnstructuredArray"])
+            postings = [
+                data.Posting(
+                    assetAccount,
+                    amount.Amount(
+                        D(str(trx["transactionAmount"]["amount"])),
+                        trx["transactionAmount"]["currency"],
+                    ),
+                    None,
+                    None,
+                    None,
+                    None,
+                )
+            ]
+            if narration in self.static_predictions_dict:
+                # print(f"Found static prediction for narration: {narration}")
+                static_account = self.static_predictions_dict[narration]
+                postings.append(data.Posting(
+                    static_account,
+                    -amount.Amount(
+                        D(str(trx["transactionAmount"]["amount"])),
+                        trx["transactionAmount"]["currency"],
+                    ),
+                    None,
+                    None,
+                    None,
+                    None,
+                ))
             entry = data.Transaction(
                 meta,
                 trxDate,
@@ -113,19 +153,7 @@ class NordigenJSONImporter(beangulp.Importer):
                 narration,
                 data.EMPTY_SET,
                 data.EMPTY_SET,
-                [
-                    data.Posting(
-                        assetAccount,
-                        amount.Amount(
-                            D(str(trx["transactionAmount"]["amount"])),
-                            trx["transactionAmount"]["currency"],
-                        ),
-                        None,
-                        None,
-                        None,
-                        None,
-                    ),
-                ]
+                postings,
             )
             entries.append(entry)
         return entries
@@ -138,17 +166,18 @@ class NordigenJSONImporter(beangulp.Importer):
             metakv = {}
 
             meta = data.new_metadata(filepath, index, metakv)
-            trxDate = parse(trx['valueDate']).date()
+            trxDate = parse(trx["valueDate"]).date()
             narration = ""
 
             if "remittanceInformationUnstructured" in trx:
                 narration += trx["remittanceInformationUnstructured"]
-                metakv["remittanceInformationUnstructured"] = trx["remittanceInformationUnstructured"]
+                metakv["remittanceInformationUnstructured"] = trx[
+                    "remittanceInformationUnstructured"
+                ]
             if "creditorName" in trx:
                 narration = trx["creditorName"].strip()
             if "remittanceInformationUnstructuredArray" in trx:
-                narration += " ".join(
-                    trx["remittanceInformationUnstructuredArray"])
+                narration += " ".join(trx["remittanceInformationUnstructuredArray"])
             entry = data.Transaction(
                 meta,
                 trxDate,
@@ -169,7 +198,7 @@ class NordigenJSONImporter(beangulp.Importer):
                         None,
                         None,
                     ),
-                ]
+                ],
             )
             entries.append(entry)
         return entries
@@ -184,9 +213,11 @@ class NordigenJSONImporter(beangulp.Importer):
                 break
 
         bal_amount = amount.Amount(
-            D(str(balance["balanceAmount"]["amount"])), balance["balanceAmount"]["currency"])
+            D(str(balance["balanceAmount"]["amount"])),
+            balance["balanceAmount"]["currency"],
+        )
         try:
-            bal_date = parse(balance['referenceDate']).date()
+            bal_date = parse(balance["referenceDate"]).date()
 
         except KeyError:
             bal_date = datetime.date.today()
@@ -194,8 +225,7 @@ class NordigenJSONImporter(beangulp.Importer):
         bal_date += datetime.timedelta(1)
 
         meta = data.new_metadata(filepath, 0)
-        baltx = data.Balance(
-            meta, bal_date, assetAccount, bal_amount, None, None)
+        baltx = data.Balance(meta, bal_date, assetAccount, bal_amount, None, None)
 
         return baltx
 
@@ -205,8 +235,7 @@ class NordigenJSONImporter(beangulp.Importer):
         for pendning_transaction in js["transactions"]["transactions"]["pending"]:
 
             am = amount.Amount(
-                D(str(
-                    pendning_transaction["transactionAmount"]["amount"])),
+                D(str(pendning_transaction["transactionAmount"]["amount"])),
                 pendning_transaction["transactionAmount"]["currency"],
             )
             sum_pending = amount.add(sum_pending, am)
@@ -219,10 +248,12 @@ class NordigenJSONImporter(beangulp.Importer):
                 break
 
         bal_amount = amount.Amount(
-            D(str(balance["balanceAmount"]["amount"])), balance["balanceAmount"]["currency"])
+            D(str(balance["balanceAmount"]["amount"])),
+            balance["balanceAmount"]["currency"],
+        )
         bal_amount = amount.add(bal_amount, -sum_pending)
         try:
-            bal_date = parse(balance['referenceDate']).date()
+            bal_date = parse(balance["referenceDate"]).date()
 
         except KeyError:
             bal_date = datetime.date.today()
@@ -230,8 +261,7 @@ class NordigenJSONImporter(beangulp.Importer):
         bal_date += datetime.timedelta(1)
 
         meta = data.new_metadata(filepath, 0)
-        baltx = data.Balance(
-            meta, bal_date, assetAccount, bal_amount, None, None)
+        baltx = data.Balance(meta, bal_date, assetAccount, bal_amount, None, None)
 
         return baltx
 
@@ -245,23 +275,21 @@ class NordigenJSONImporter(beangulp.Importer):
         entries = []
 
         if Modes.BOOKED in self.mode:
-            transactions = self._extract_booked_transactions(
-                filepath, assetAccount, js)
+            transactions = self._extract_booked_transactions(filepath, assetAccount, js)
             entries.extend(transactions)
 
         if Modes.BOOKED_BALANCE in self.mode:
-            transactions = self._extract_booked_balance(
-                filepath, assetAccount, js)
+            transactions = self._extract_booked_balance(filepath, assetAccount, js)
             entries.append(transactions)
 
         if Modes.PENDING_BALANCE in self.mode:
-            transactions = self._extract_pending_balance(
-                filepath, assetAccount, js)
+            transactions = self._extract_pending_balance(filepath, assetAccount, js)
             entries.append(transactions)
 
         if Modes.PENDING in self.mode:
             transactions = self._extract_pending_transactions(
-                filepath, assetAccount, js)
+                filepath, assetAccount, js
+            )
             entries.extend(transactions)
 
         return entries
